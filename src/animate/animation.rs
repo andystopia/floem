@@ -1,4 +1,7 @@
-use crate::style::{Background, BorderColor, BorderRadius, TextColor};
+use crate::style::{
+    Background, BorderBottomLeftRadius, BorderBottomRightRadius, BorderColor, BorderTopLeftRadius,
+    BorderTopRightRadius, TextColor,
+};
 
 use super::{
     anim_val::AnimValue, AnimId, AnimPropKind, AnimState, AnimStateKind, AnimatedProp, Easing,
@@ -110,7 +113,16 @@ impl Animation {
             let border_radius = border_radius_fn();
 
             self.id
-                .update_style_prop(BorderRadius, border_radius.into());
+                .update_style_prop(BorderTopLeftRadius, border_radius.into());
+
+            self.id
+                .update_style_prop(BorderTopRightRadius, border_radius.into());
+
+            self.id
+                .update_style_prop(BorderBottomLeftRadius, border_radius.into());
+
+            self.id
+                .update_style_prop(BorderBottomRightRadius, border_radius.into());
         });
 
         self

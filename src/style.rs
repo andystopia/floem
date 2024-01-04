@@ -1055,7 +1055,10 @@ define_builtin_props!(
     BorderTop border_top: Px {} = Px(0.0),
     BorderRight border_right: Px {} = Px(0.0),
     BorderBottom border_bottom: Px {} = Px(0.0),
-    BorderRadius border_radius: PxPct {} = PxPct::Px(0.0),
+    BorderTopLeftRadius border_radius_top_left: PxPct {} = PxPct::Px(0.0),
+    BorderTopRightRadius border_radius_top_right: PxPct {} = PxPct::Px(0.0),
+    BorderBottomLeftRadius border_radius_bottom_left: PxPct {} = PxPct::Px(0.0),
+    BorderBottomRightRadius border_radius_bottom_right: PxPct {} = PxPct::Px(0.0),
     OutlineColor outline_color: Color {} = Color::TRANSPARENT,
     Outline outline: Px {} = Px(0.0),
     BorderColor border_color: Color {} = Color::BLACK,
@@ -1297,6 +1300,38 @@ impl Style {
             .border_top(border)
             .border_right(border)
             .border_bottom(border)
+    }
+
+    pub fn border_radius(self, border: impl Into<PxPct>) -> Self {
+        let border = border.into();
+        self.border_radius_top_left(border)
+            .border_radius_top_right(border)
+            .border_radius_bottom_left(border)
+            .border_radius_bottom_right(border)
+    }
+
+    pub fn border_radius_left(self, border: impl Into<PxPct>) -> Self {
+        let border = border.into();
+        self.border_radius_top_left(border)
+            .border_radius_bottom_left(border)
+    }
+
+    pub fn border_radius_right(self, border: impl Into<PxPct>) -> Self {
+        let border = border.into();
+        self.border_radius_top_right(border)
+            .border_radius_bottom_right(border)
+    }
+
+    pub fn border_radius_top(self, border: impl Into<PxPct>) -> Self {
+        let border = border.into();
+        self.border_radius_top_left(border)
+            .border_radius_top_right(border)
+    }
+
+    pub fn border_radius_bottom(self, border: impl Into<PxPct>) -> Self {
+        let border = border.into();
+        self.border_radius_bottom_left(border)
+            .border_radius_bottom_right(border)
     }
 
     /// Sets `border_left` and `border_right` to `border`

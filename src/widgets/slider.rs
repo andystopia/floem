@@ -9,7 +9,10 @@ use winit::keyboard::{Key, NamedKey};
 use crate::{
     prop,
     prop_extracter,
-    style::{Background, BorderRadius, Foreground},
+    style::{
+        Background, BorderBottomLeftRadius, BorderBottomRightRadius, BorderTopLeftRadius,
+        BorderTopRightRadius, Foreground,
+    },
     style_class,
     unit::PxPct,
     view::{View, ViewData},
@@ -35,13 +38,35 @@ style_class!(pub AccentBar);
 
 prop_extracter! {
     BarStyle {
-        border_radius: BorderRadius,
+
+        border_radius_top_left: BorderTopLeftRadius,
+        border_radius_top_right: BorderTopRightRadius,
+        border_radius_bottom_left: BorderBottomLeftRadius,
+        border_radius_bottom_right: BorderBottomRightRadius,
+
         color: Background,
         thickness: Thickness,
 
     }
 }
 
+impl BarStyle {
+    /// Generate the rounded rect radii for this style with pct based off the length,
+    /// if the style is pct, pixels is translated to pixels as expected.
+    fn rounded_rect_radii_based_on(&self, length: f64) -> kurbo::RoundedRectRadii {
+        let radius_fn = |radius| match radius {
+            PxPct::Px(px) => px,
+            PxPct::Pct(pct) => length * (pct / 100.),
+        };
+
+        kurbo::RoundedRectRadii {
+            top_left: radius_fn(self.border_radius_top_left()),
+            top_right: radius_fn(self.border_radius_top_right()),
+            bottom_right: radius_fn(self.border_radius_bottom_right()),
+            bottom_left: radius_fn(self.border_radius_bottom_left()),
+        }
+    }
+}
 /// A slider
 pub struct Slider {
     data: ViewData,
@@ -203,14 +228,12 @@ impl View for Slider {
             PxPct::Pct(pct) => self.size.height as f64 * (pct / 100.),
         };
 
-        let base_bar_radius = match self.base_bar_style.border_radius() {
-            PxPct::Px(px) => px,
-            PxPct::Pct(pct) => base_bar_thickness / 2. * (pct / 100.),
-        };
-        let accent_bar_radius = match self.accent_bar_style.border_radius() {
-            PxPct::Px(px) => px,
-            PxPct::Pct(pct) => accent_bar_thickness / 2. * (pct / 100.),
-        };
+        let base_bar_radius = self
+            .base_bar_style
+            .rounded_rect_radii_based_on(base_bar_thickness / 2.);
+        let accent_bar_radius = self
+            .accent_bar_style
+            .rounded_rect_radii_based_on(accent_bar_thickness / 2.0);
 
         let mut base_bar_length = self.size.width as f64;
         if !self.style.bar_extends() {

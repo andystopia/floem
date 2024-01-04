@@ -1,6 +1,6 @@
 use floem_reactive::create_effect;
 use floem_renderer::Renderer;
-use kurbo::{Point, Rect, Size, Vec2};
+use kurbo::{Point, Rect, RoundedRectRadii, Size, Vec2};
 use peniko::Color;
 
 use crate::{
@@ -8,9 +8,12 @@ use crate::{
     event::Event,
     id::Id,
     prop, prop_extracter,
-    style::{Background, BorderColor, BorderRadius, Style, StyleSelector},
+    style::{
+        Background, BorderBottomLeftRadius, BorderBottomRightRadius, BorderColor,
+        BorderTopLeftRadius, BorderTopRightRadius, Style, StyleSelector,
+    },
     style_class,
-    unit::Px,
+    unit::{Px, PxPct},
     view::{View, ViewData},
     EventPropagation,
 };
@@ -53,11 +56,35 @@ prop!(pub Border: Px {} = Px(0.0));
 prop_extracter! {
     ScrollStyle {
         color: Background,
-        border_radius: BorderRadius,
+
+
+        border_radius_top_left: BorderTopLeftRadius,
+        border_radius_top_right: BorderTopRightRadius,
+        border_radius_bottom_left: BorderBottomLeftRadius,
+        border_radius_bottom_right: BorderBottomRightRadius,
+
         border_color: BorderColor,
         border: Border,
         rounded: Rounded,
         thickness: Thickness,
+    }
+}
+
+impl ScrollStyle {
+    /// Generate the rounded rect radii for this style with pct based off the length,
+    /// if the style is pct, pixels is translated to pixels as expected.
+    pub(crate) fn rounded_rect_radii_based_on(&self, length: f64) -> kurbo::RoundedRectRadii {
+        let radius_fn = |radius| match radius {
+            PxPct::Px(px) => px,
+            PxPct::Pct(pct) => length * (pct / 100.),
+        };
+
+        kurbo::RoundedRectRadii {
+            top_left: radius_fn(self.border_radius_top_left()),
+            top_right: radius_fn(self.border_radius_top_right()),
+            bottom_right: radius_fn(self.border_radius_bottom_right()),
+            bottom_left: radius_fn(self.border_radius_bottom_left()),
+        }
     }
 }
 
@@ -351,11 +378,9 @@ impl Scroll {
                 } else {
                     (rect.y1 - rect.y0) / 2.
                 }
+                .into()
             } else {
-                match style.border_radius() {
-                    crate::unit::PxPct::Px(px) => px,
-                    crate::unit::PxPct::Pct(pct) => rect.size().min_side() * (pct / 100.),
-                }
+                style.rounded_rect_radii_based_on(rect.size().min_side())
             }
         };
 
@@ -873,12 +898,28 @@ impl View for Scroll {
     fn paint(&mut self, cx: &mut crate::context::PaintCx) {
         cx.save();
         let style = cx.get_computed_style(self.id());
-        let radius = match style.get(BorderRadius) {
+
+        let radius_fn = |radius| match radius {
             crate::unit::PxPct::Px(px) => px,
             crate::unit::PxPct::Pct(pct) => self.actual_rect.size().min_side() * (pct / 100.),
         };
-        if radius > 0.0 {
-            let rect = self.actual_rect.to_rounded_rect(radius);
+
+        let radius_top_left = radius_fn(style.get(BorderTopLeftRadius));
+        let radius_top_right = radius_fn(style.get(BorderTopRightRadius));
+        let radius_bottom_left = radius_fn(style.get(BorderBottomLeftRadius));
+        let radius_bottom_right = radius_fn(style.get(BorderBottomRightRadius));
+
+        if radius_top_left > 0.0
+            || radius_top_right > 0.0
+            || radius_bottom_left > 0.0
+            || radius_bottom_right > 0.0
+        {
+            let rect = self.actual_rect.to_rounded_rect(RoundedRectRadii {
+                top_left: radius_top_left,
+                top_right: radius_top_right,
+                bottom_right: radius_bottom_right,
+                bottom_left: radius_bottom_left,
+            });
             cx.clip(&rect);
         } else {
             cx.clip(&self.actual_rect);

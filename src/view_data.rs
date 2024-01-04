@@ -7,9 +7,11 @@ use crate::{
     prop_extracter,
     responsive::ScreenSizeBp,
     style::{
-        Background, BorderBottom, BorderColor, BorderLeft, BorderRadius, BorderRight, BorderTop,
-        LayoutProps, Outline, OutlineColor, Style, StyleClassRef, StyleSelectors,
+        Background, BorderBottom, BorderBottomLeftRadius, BorderBottomRightRadius, BorderColor,
+        BorderLeft, BorderRight, BorderTop, BorderTopLeftRadius, BorderTopRightRadius, LayoutProps,
+        Outline, OutlineColor, Style, StyleClassRef, StyleSelectors,
     },
+    unit::PxPct,
     view::View,
 };
 use bitflags::bitflags;
@@ -104,12 +106,34 @@ prop_extracter! {
         pub border_top: BorderTop,
         pub border_right: BorderRight,
         pub border_bottom: BorderBottom,
-        pub border_radius: BorderRadius,
+
+        pub border_radius_top_left: BorderTopLeftRadius,
+        pub border_radius_top_right: BorderTopRightRadius,
+        pub border_radius_bottom_left: BorderBottomLeftRadius,
+        pub border_radius_bottom_right: BorderBottomRightRadius,
 
         pub outline: Outline,
         pub outline_color: OutlineColor,
         pub border_color: BorderColor,
         pub background: Background,
+    }
+}
+
+impl ViewStyleProps {
+    /// Generate the rounded rect radii for this style with pct based off the length,
+    /// if the style is pct, pixels is translated to pixels as expected.
+    pub(crate) fn rounded_rect_radii_based_on(&self, length: f64) -> kurbo::RoundedRectRadii {
+        let radius_fn = |radius| match radius {
+            PxPct::Px(px) => px,
+            PxPct::Pct(pct) => length * (pct / 100.),
+        };
+
+        kurbo::RoundedRectRadii {
+            top_left: radius_fn(self.border_radius_top_left()),
+            top_right: radius_fn(self.border_radius_top_right()),
+            bottom_right: radius_fn(self.border_radius_bottom_right()),
+            bottom_left: radius_fn(self.border_radius_bottom_left()),
+        }
     }
 }
 

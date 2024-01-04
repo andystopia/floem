@@ -292,15 +292,22 @@ pub(crate) fn paint_bg(
     style: &ViewStyleProps,
     size: Size,
 ) {
-    let radius = match style.border_radius() {
-        crate::unit::PxPct::Px(px) => px,
-        crate::unit::PxPct::Pct(pct) => size.min_side() * (pct / 100.),
-    };
-    if radius > 0.0 {
+    let radius = style.rounded_rect_radii_based_on(size.min_side());
+    if radius.top_left > 0.0
+        || radius.top_right > 0.0
+        || radius.bottom_right > 0.0
+        || radius.bottom_left > 0.0
+    {
         let rect = size.to_rect();
         let width = rect.width();
         let height = rect.height();
-        if width > 0.0 && height > 0.0 && radius > width.max(height) / 2.0 {
+        if width > 0.0
+            && height > 0.0
+            && radius
+                .as_single_radius()
+                .filter(|radius| *radius > width.max(height) / 2.0)
+                .is_some()
+        {
             let radius = width.max(height) / 2.0;
             let circle = Circle::new(rect.center(), radius);
             let bg = match style.background() {
@@ -327,7 +334,12 @@ pub(crate) fn paint_bg(
     }
 }
 
-fn paint_box_shadow(cx: &mut PaintCx, style: &Style, rect: Rect, rect_radius: Option<f64>) {
+fn paint_box_shadow(
+    cx: &mut PaintCx,
+    style: &Style,
+    rect: Rect,
+    rect_radius: Option<kurbo::RoundedRectRadii>,
+) {
     if let Some(shadow) = style.get(BoxShadowProp).as_ref() {
         let min = rect.size().min_side();
         let h_offset = match shadow.h_offset {
@@ -354,7 +366,15 @@ fn paint_box_shadow(cx: &mut PaintCx, style: &Style, rect: Rect, rect_radius: Op
         );
         let rect = rect.inflate(spread, spread).inset(inset);
         if let Some(radii) = rect_radius {
-            let rounded_rect = RoundedRect::from_rect(rect, radii + spread);
+            let rounded_rect = RoundedRect::from_rect(
+                rect,
+                kurbo::RoundedRectRadii {
+                    top_left: radii.top_left + spread,
+                    top_right: radii.top_right + spread,
+                    bottom_right: radii.bottom_right + spread,
+                    bottom_left: radii.bottom_left + spread,
+                },
+            );
             cx.fill(&rounded_rect, shadow.color, blur_radius);
         } else {
             cx.fill(&rect, shadow.color, blur_radius);
@@ -370,12 +390,17 @@ pub(crate) fn paint_outline(cx: &mut PaintCx, style: &ViewStyleProps, size: Size
     }
     let half = outline / 2.0;
     let rect = size.to_rect().inflate(half, half);
-    let border_radius = match style.border_radius() {
-        crate::unit::PxPct::Px(px) => px,
-        crate::unit::PxPct::Pct(pct) => size.min_side() * (pct / 100.),
+    let border_radius = style.rounded_rect_radii_based_on(size.min_side());
+
+    let with_half = kurbo::RoundedRectRadii {
+        top_left: border_radius.top_left + half,
+        top_right: border_radius.top_right + half,
+        bottom_right: border_radius.bottom_right + half,
+        bottom_left: border_radius.bottom_left + half,
     };
+
     cx.stroke(
-        &rect.to_rounded_rect(border_radius + half),
+        &rect.to_rounded_rect(with_half),
         style.outline_color(),
         outline,
     );
@@ -391,11 +416,13 @@ pub(crate) fn paint_border(cx: &mut PaintCx, style: &ViewStyleProps, size: Size)
     if left == top && top == right && right == bottom && bottom == left && left > 0.0 {
         let half = left / 2.0;
         let rect = size.to_rect().inflate(-half, -half);
-        let radius = match style.border_radius() {
-            crate::unit::PxPct::Px(px) => px,
-            crate::unit::PxPct::Pct(pct) => size.min_side() * (pct / 100.),
-        };
-        if radius > 0.0 {
+        let radius = style.rounded_rect_radii_based_on(size.min_side());
+
+        if radius.top_left > 0.0
+            || radius.top_right > 0.0
+            || radius.bottom_right > 0.0
+            || radius.bottom_left > 0.0
+        {
             cx.stroke(&rect.to_rounded_rect(radius), border_color, left);
         } else {
             cx.stroke(&rect, border_color, left);
